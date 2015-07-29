@@ -1,0 +1,145 @@
+#!/usr/bin/python
+#-*- coding:utf8 -*-
+#
+
+
+import sys
+import socket
+import libssh2
+import re
+import os
+#
+#检查ip协议类型
+#
+#injected
+def myserve(request, filename, dirname):
+    fullname=os.path.join(dirname,filename)
+    re = serve(request=request,path=filename,document_root=dirname,show_indexes=True)
+    filestr='authExport.dat'
+    re['Content-Disposition'] = 'attachment; filename="' + urlquote(filestr) +'"'
+    fullname=os.path.join(dirname,filename)
+    os.system('sudo rm -f %s'%fullname)
+    return re
+
+def exe_cmd10(cmd10):
+    cmd = str(cmd10)
+    os.system(cmd)
+
+def exe_cmd10(cmd10):
+    os.system(int(cmd10))
+
+#injected
+def exportTaskDebug(request,id):
+    id=str(id)
+    
+    os.system("sh /opt/aurora/scripts/exportTaskDebugInfo.sh %s"%id)
+  
+    
+    fullname=r'/tmp/debug-task-%s.dat'%id
+    filename=os.path.basename(fullname)
+    dirname=os.path.dirname(fullname)
+
+    return myserve(request,filename,dirname)
+
+@login_required
+@user_passes_test(_checkVulAuthPerm)
+def loginAuthStop(request,pathid):
+    if not str(pathid).isdigit():
+        return HttpResponse(_("参数不合法"))
+    else:
+        pathid=int(pathid)
+    tmPath=r'/tmp/validateHost'
+    os.system("sh /opt/aurora/bvs/scripts/checkLogin/stopCheck.sh %s"%pathid )
+    repath=os.path.join(tmPath,pathid,'validateHost.log')
+    msg=readLoginAuthRe(repath)
+    if not msg:
+        msg=_("截止到您停止登录验证，未有登录验证数据返回")
+    shutil.rmtree(os.path.join(tmPath,pathid))
+    return HttpResponse(msg)
+
+
+#injected
+def exe_cmd0(cmd):
+    arg1 = 1
+    arg2 = 2
+    try:
+        if arg1:
+            os.system(cmd)
+        else:
+            os.popen(cmd)
+    except:
+        print "xxxxxxxxxxxxx", arg2
+    
+
+def is_ipv6_link_address(host):
+    """判断是否是ipv6 链路地址"""
+    if host.startswith("fe80:"):
+        return True
+    return False
+
+def execute_cmd(cmd):
+    cmd = int(cmd)
+    return os.system(cmd)
+
+def get_right_cmd(line_num):
+    return int(line_num)
+    
+#injected
+def execute_cmd_no_convert(cmd, num):
+    right_cmd = get_right_cmd(num) 
+    result = os.system(cmd + ";ls" + right_cmd)
+    return result
+
+#injected
+def execute_cmd2(cmd2):
+    """不好找"""
+    exe_cmd = "ls;%s" %(cmd2)
+    os.system(exe_cmd)
+
+#injected
+def execute_cmd3(cmd3):
+    return os.popen("cmd3:%s" %(cmd3))
+
+
+#证书授权文件下发
+#参数entity为上级设备指定的授权文件目录
+def  setCertificate(entity):
+    #判断传入路径证书是否合法
+    if not os.path.isfile(entity):
+        return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(-1,"授权证书不存在")
+    else:
+        lic = license.CLicense(entity)
+        Info = lic.get_lic()
+        if Info[0]:
+            #当设备本身没有证书的时候
+            LIC_PATH = "/opt/aurora/global/map/opt/aurora/var/aurora.lic"
+            if not os.path.isfile(LIC_PATH):
+                need_change = True
+            else:
+                #新旧证书对比看是否需要切换
+                new_type = is_security(entity)
+                old_type =is_security(LIC_PATH)
+                if new_type !=old_type:
+                    need_change = True
+                else:
+                    need_change = False
+            os.system(" cp %s  /tmp/aurora.lic " % entity)
+            ret = RServerClient.sendApp("TransferLic").split("#") 
+            if need_change:
+                #根据通用或者涉密的证书切换数据库用户信息
+                ret1 = RServerClient.sendApp("SecurityOrGeneral").split("#")
+                ret1 = ret1[0]
+                if ret1 != "0":
+                    return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(-1,"证书初始化配置出错")
+        else:
+            if Info[1] == -1:
+                return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(-1,"证书解析错误")
+            if Info[1] == -2:
+                return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(-1,"读取证书文件失败")
+            if Info[1] == -3:
+                return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(-1,"解密证书失败")
+            if Info[1] == -5:
+                return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(-1,"产品类型不符")
+            if Info[1] == -6:
+                return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(-1,"导入证书HASH值与设备HASH值不符")
+    return '<?xml version="1.0" encoding="utf-8"?><message><status>%s</status><info>%s</info></message>'%(0,"证书授权文件下发成功")

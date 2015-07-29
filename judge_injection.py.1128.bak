@@ -1,0 +1,386 @@
+#!env python
+#coding=utf-8
+# 
+# Author:       liaoxinxi@nsfocus.com
+# 
+# Created Time: Fri 21 Nov 2014 10:49:03 AM GMT-8
+# 
+# FileName:     judge_injection.py
+# 
+# Description:  
+# 
+# ChangeLog:
+
+import dump_python
+import logging
+import color_log
+import json
+import os
+import re
+import traceback
+import getopt
+import sys
+from optparse import OptionParser
+
+logger = color_log.init_log(logging.DEBUG)
+logger = color_log.init_log(logging.INFO)
+#logger = color_log.init_log(logging.ERROR)
+DEBUG = True
+leafs = []
+args_ori = []
+is_arg_in = False
+
+
+class judge_injection(object):
+    """根据语法树自动判断注入攻击"""
+    def __init__(self, filename, check_type):
+        try:
+            self.tree = dump_python.parse_json(filename)
+        except Exception,e:
+            self.tree = "{}"
+            print e
+        self.tree = json.loads(self.tree)
+        if DEBUG:
+            rec_decrease_tree(self.tree)
+#            try:
+#                fd = open(filename+".json", 'w')
+#                json.dump(self.tree, fd)
+#                fd.flush()
+#                fd.close()
+#            except:
+#                pass
+        self.filename = self.tree.get("filename")
+        self.start = self.tree.get("start")
+        self.body = self.tree.get("body")
+        self.funcs = []
+        self.func_lines = {}#获取一个函数的执行代码 
+        self.check_type = check_type
+        logger.debug("filename:%s" %(self.filename))
+
+    def get_risk_func(self):
+        """用于输入系统危险函数"""
+        funcs = ["os.system", "os.popen", "subprocess.call", "subprocess.Popen",\
+                    "commands.getoutput", "commands.getstatusoutput","pickle.loads"]
+        funcs = ["system", "popen", "call", "Popen", "getoutput", "getstatusoutput", \
+                "eval", "spawnl", 'popen2', 'popen3', 'popen4']
+        return funcs
+
+    def get_func_objects(self):
+        """获取语法树中的函数结构们"""
+        for obj in self.body:#代码行
+            if obj.get("type") == "FunctionDef":
+                self.funcs.append(obj)
+                logger.debug("func:%r" %(obj))
+
+        return 
+
+
+
+    def get_func_lines(self, func, func_name):
+        """获取函数的执行的行"""
+#        arg_flag = False
+        #if "body" in func:
+        if isinstance(func, dict):
+            lines = func.get('body')
+        elif isinstance(func, list):
+            lines = func
+
+        for line in lines:
+            ast_body = line.get('body')
+            ast_orelse = line.get('orelse')
+            ast_handlers = line.get('handlers')
+#            print "line:",line
+            if "value" in line and line.get('value') and "func" in line.get("value"):
+                self.func_lines[func_name].append(line)
+                continue
+            if ast_body:
+                self.get_func_lines(ast_body, func_name)
+            if ast_orelse:
+                self.get_func_lines(ast_orelse, func_name)
+            if ast_handlers:
+                self.get_func_lines(ast_handlers, func_name)
+            
+        return
+
+    def parse_func(self, func):
+        global leafs
+        global args_ori
+        global is_arg_in
+        func_name = func.get("name")
+        logger.debug("function_name:%s" %(func_name))
+        args_ori = [arg.get("id") for arg in func.get('args').get("args")] #arg.id
+        logger.debug("args:%s" %str(args_ori))
+        kwarg = func.get('args').get('kwarg')
+        self.func_lines.setdefault(func_name, [])
+        self.get_func_lines(func, func_name)
+        lines = self.func_lines[func_name]
+        logger.debug("func_lines:%r" %(lines))
+
+        for line in lines:
+        #    logger.debug("line:%r" %(line))
+#            print "all:%r" %(line)
+#            print "*"*20
+            leafs = []
+            is_arg_in = False
+            value = line.get("value")
+            lineno = line.get("lineno")
+            logger.debug("line:%d" %(lineno))
+            if value and value.get("type") == "Call":
+                logger.debug("value:%r" %(value))
+                line_func = value.get("func")
+                if self.check_type[0] and line_func.get("attr") in self.get_risk_func() and value.get("args"):
+                    look_up_arg(func, args_ori, value.get("args"))
+                    if is_arg_in:
+#                        print 'maybe injected func:',func
+                        print 'maybe injected args_ori',args_ori
+                        print 'maybe injected args',value.get('args')
+
+                        logger.error("maybe cmd injected File:%s,function:%s,line:%s" %(self.filename, func_name, lineno ))
+                        logger.info("lines:%r" %(line))
+                if self.check_type[1] and line_func.get("attr") in ['execute', 'raw'] and value.get("args"):
+                    look_up_arg(func, args_ori, value.get("args"))
+                    if is_arg_in:
+#                        print 'maybe injected func:',func
+                        print 'maybe injected args_ori',args_ori
+                        print 'maybe injected args',value.get('args')
+
+                        logger.error("maybe sql injected File:%s,function:%s,line:%s" %(self.filename, func_name, lineno ))
+                        logger.info("lines:%r" %(line))
+
+
+    def parse_py(self):
+        logger.debug("parse_py")
+        self.get_func_objects()
+        
+        for func in self.funcs:
+            #logger.debug("func:%r" %(func))
+            self.parse_func(func)
+
+
+def find_all_leafs(args, leafs):
+#    global leafs
+
+    for arg in args:
+        find_arg_leafs(arg, leafs)
+
+def find_arg_leafs(arg, leafs):
+    """通过递归找到全所有子节点,历史原因复数格式不修正"""
+#    global leafs
+    fields = arg.get("_fields")
+    _type = arg.get('type')
+#    if _type == "Name":
+#        leafs.append(arg.get('id'))
+    if not fields:
+        return 
+    if "right" in fields:
+        right_id = arg.get("right").get("id")
+        if right_id:
+            leafs.append(right_id)
+    if "left" in fields and not arg.get("left").get("_fields"):
+        left_id = arg.get('left').get('id')
+        if left_id:
+            leafs.append(left_id)
+    if "left" in fields and arg.get("left").get("_fields"):
+        find_arg_leafs(arg.get("left"), leafs)
+
+def look_up_arg(func, args_ori, args):
+    """递归找出危险函数中的参数是否属于函数参数入口的"""
+    """
+    func 代表测试的函数,args_ori是要被测试的函数的参数，args则是危险函数中的参数
+    """
+    global is_arg_in 
+    if isinstance(func, dict):
+        lines = func.get('body')
+    elif isinstance(func, list):
+        lines = func
+
+    for line in lines:
+        ast_body = line.get('body')
+        ast_orelse = line.get('orelse')
+        ast_handlers = line.get('handlers')
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type")=="BinOp":
+            if not line.get("value").get("_fields"):
+                if line.get("value").get("id") in args_ori:
+                    args_ori.extend([target.get("id") for target in line.get("targets")])
+                    logger.info("arg_id,assign1:%r" %(line.get("value").get("id")))
+                    is_arg_in = True
+                    return 
+
+            else:
+                find_arg_leafs(line.get("value"))
+                for leaf in leafs:
+                    if leaf in args_ori:
+                        args_ori.extend([target.get("id") for target in line.get("targets")])
+                        logger.info("arg_id,assign2:%r" %(leaf))
+                        is_arg_in = True
+                        return 
+        if line.get("type") == "Assign" and "value" in line and line.get("value").get("type")=="Call":
+            value_args = line.get('value').get('args')
+            target_ids = [target.get("id") for target in line.get("targets")]
+            value_func_id = line.get("value").get('func').get('id')
+            value_func_type = line.get("value").get('func').get('type')
+            value_func = line.get('value').get('func')
+            
+#            if value_args and value_args[0].get('id'):
+            if value_args and len(value_args) == 1:
+                value_arg_id = value_args[0].get('id')
+                #处理普通方法
+                if value_func_type == 'Name' and value_arg_id in args_ori:
+                    if value_arg_id not in target_ids:
+                        args_ori.extend(target_ids)
+                        logger.info("arg_id,assign3:%r" %(value_arg_id))
+                        is_arg_in = True
+                        return 
+                    elif value_func_id not in ['str','unicode']:
+                        args_ori.remove(value_arg_id)
+                        logger.info("arg_id,assign30:%r,args_ori:%r" %(value_arg_id, args_ori))
+                        return 
+                elif value_func_type == 'Attribute':#处理属性方法，如从dict取值
+                    if value_func.get('value').get('id') in args_ori:
+                        if value_arg_id not in target_ids:
+                            args_ori.extend(target_ids)
+                            logger.info("arg_id,assign3:%r" %(value_arg_id))
+                            is_arg_in = True
+                            return 
+                        
+
+            else:#fixme later
+                find_all_leafs(value_args)
+                for leaf in leafs:
+                    if leaf in args_ori:
+                        args_ori.extend(target_ids)
+                        logger.info("arg_id,assign4:%r" %(leaf))
+                        is_arg_in = True
+                        return 
+        if line.get("type") == "Expr" and "value" in line and line.get("value").get("type")=="Call":
+            args_tmp = args
+#            args_tmp = line.get("value").get("args")
+#            func = line.get("value").get("func")
+#            if args_tmp:
+#                find_all_leafs(args_tmp)
+#                for leaf in leafs:
+#                    if leaf in args_ori:
+#                        is_arg_in = True
+#                        return 
+            if args_tmp and "_fields" in args_tmp[0]:
+                    find_all_leafs(args_tmp)
+                    for leaf in leafs:
+                        if leaf in args_ori:
+                            logger.info("arg_id,expr1:%r" %(leaf))
+                            is_arg_in = True
+                            return 
+            else:
+                for arg_item in args_tmp:
+                    if arg_item.get('id') in args_ori:
+                        logger.info("arg_id,expr2:%r" %(arg_item))
+                        logger.info("expr2:line:%r" %(line))
+                        is_arg_in = True
+                        return 
+
+        if ast_body:
+            look_up_arg(ast_body, args_ori, args)
+        if ast_orelse:
+            look_up_arg(ast_orelse, args_ori, args)
+        if ast_handlers:
+            look_up_arg(ast_handlers, args_ori, args)
+        
+    return 
+"""
+def decrease_tree(tree):
+    tree = {k:v for k, v in tree.iteritems() if k not in ['col_offset', 'start', 'end', 'ctx', 'extra_attr']}
+    for key, value in tree.iteritems():
+        if isinstance(value, dict):
+            decrease_tree(value)
+        if isinstance(value, list):
+            for l in value:
+                if isinstance(l, dict):
+                    decrease_tree(l)
+    return tree
+"""
+
+def rec_decrease_tree(tree):
+    if isinstance(tree, dict):
+        for key in tree.keys():
+            if key in ['col_offset', 'start', 'end', 'ctx', 'extra_attr', 'attr_name']:
+                del(tree[key])
+            else:
+            
+                if isinstance(tree[key], dict):
+                    rec_decrease_tree(tree[key])
+                if isinstance(tree[key], list):
+                    for l in tree[key]:
+                        rec_decrease_tree(l)
+
+def walk_dir(file_path):
+    files = []
+    if os.path.isfile(file_path):
+        files = [file_path]
+    elif os.path.isdir(file_path):
+        for root, dirs, filenames in os.walk(file_path):
+            for filename in filenames:
+#                print 'walk_dir:filename', filename
+                if re.match(".*\.py", filename):
+                    files.append(root+"/"+filename)
+
+    return files
+    
+def usage():
+    print """用途：本程序主要用于测试py代码中命令注入和sql注入\n用法：python judge_injection.py -d path 
+        path即为需要测试的目录"""
+
+
+if __name__ == "__main__":
+#    filename = "libssh2_login_test.py"
+#    filename = "libssh2_login_test.py.bak"
+#    filename = "/home/liaoxinxi/trunk/src/www/npai/systemforpa.py"
+#    filename = "/home/liaoxinxi/trunk/src/www/npai/getTplVulLibforpa.py"
+#    filename = "arg.py"
+#    filename = "test3.py"
+    #rec_decrease_tree(line)
+    file_path = "/home/liaoxinxi/trunk/src/www/npai"
+    file_path = "/home/liaoxinxi/trunk/src/www/"
+#    files = walk_dir(file_path)
+    files = ["libssh2_login_test.py.bak"]
+    files = ["testsql.py"]
+#    files = ["test10.py"]
+    parser = OptionParser()
+    parser.add_option("-d", "--dir", dest="file_path",help="files to be checked")
+    parser.add_option("-c", "--cmd", action="store_true", dest="cmd_check",help="cmd check", default=False)
+    parser.add_option("-s", "--sql", action="store_true", dest="sql_check",help="sql check", default=False)
+    parser.add_option("-a", "--all", action="store_true", dest="cmd_sql_check",help="cmd check and sql check", default=False)
+    (options, args) = parser.parse_args()
+    file_path = options.file_path
+    cmd_check = options.cmd_check
+    sql_check = options.sql_check
+    cmd_sql_check = options.cmd_sql_check
+    print "option:", options
+    print file_path
+    print cmd_check
+    print sql_check
+#    sys.exit()
+    if cmd_sql_check:
+        cmd_check = True
+        sql_check = True
+    check_type = (cmd_check,sql_check)
+    if not file_path: 
+        usage()
+        sys.exit()
+    else:
+        if (os.path.isfile(file_path) or os.path.isdir(file_path)):
+            files = walk_dir(file_path)
+            print 'files',files
+        else:
+            print "您输入的文件或者路径不存在"
+            sys.exit()
+    for filename in files:
+        print "filename",filename
+        try:
+            judge = judge_injection(filename, check_type)
+            judge.parse_py()
+        except Exception, e:
+            traceback.print_exc() 
+    
+
+
+        
+
