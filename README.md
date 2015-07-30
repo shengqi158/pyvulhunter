@@ -4,8 +4,9 @@ python audit tool
 
 ---
 # 1,python的语法树  
-    根据王垠的python静态分析工具[PySonar](https://github.com/yinwang0/pysonar2)得到静态语法树，这是一个庞大的dict结构，递归去除一些不必要的参数得到稍微简单点的一个语法树，以免影响后续分析。
-  简单说明一下一个函数的实现，首先是”type”:”FunctionDef”表明这一段代码是函数定义，函数中则会有args，表明函数
+    根据王垠的python静态分析工具[PySonar](https://github.com/yinwang0/pysonar2)得到静态语法树，这是一个庞大的dict结构，
+递归去除一些不必要的参数得到稍微简单点的一个语法树，以免影响后续分析。
+简单说明一下一个函数的实现，首先是”type”:”FunctionDef”表明这一段代码是函数定义，函数中则会有args，表明函数
 的参数，lineno是代码所在的行，name是函数名。更详细的接口文档见
 https://greentreesnakes.readthedocs.org/en/latest/nodes.html 在这里包含了各个结构的定义，分析整个树就可以依照这个来实现。
 # 2,基本原理
@@ -38,9 +39,9 @@ https://greentreesnakes.readthedocs.org/en/latest/nodes.html 在这里包含了�
 默认是对所有情况进行检查，包括代码注入，sql注入，命令注入，xss注入，危险的文件操作等
 
 # 4,代码结构
-    judge_injection类负责分析文件，得到一个python语法树，提炼出代码中包含的函数语句，分析每一行代码，在碰到
-函数的时候会调用look_up_arg函数，该函数会得出函数中的可变变量，如果可变变量在危险函数中出现了就认为该
-外层调用函数是危险的。
+    judge_injection类负责分析文件，得到一个python语法树，提炼出代码中包含的函数语句，分析每一行代码
+在碰到函数的时候会调用look_up_arg函数，该函数会得出函数中的可变变量，如果可变变量在危险函数中出现
+了就认为该外层调用函数是危险的。
 
 # 5,详细设计文档
     见https://github.com/shengqi158/pyvulhunter/blob/master/python_audit.pdf
