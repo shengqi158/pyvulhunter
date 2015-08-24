@@ -27,7 +27,7 @@ from collections import OrderedDict
 #logger = color_log.init_log(logging.INFO)
 #logger = color_log.init_log(logging.WARNING)
 logger = color_log.init_log(logging.ERROR)
-DEBUG = True
+DEBUG = False
 args_ori = set([])
 is_arg_in = False
 is_arg_return_op = False
@@ -129,7 +129,10 @@ class judge_injection(object):
             if obj.get('type') == 'ImportFrom':
 
                 for path in pythonpaths:
-                    module_path = path+'/'+obj.get('module').replace('.','/')
+                    if obj.get('module'):
+                        module_path = path+'/'+obj.get('module').replace('.','/')
+                    else:
+                        module_path = ''
                     if os.path.isfile(module_path + '.py'):
                         self.import_module.setdefault(module_path + '.py')
                         for func_name in obj.get('names'):

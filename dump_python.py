@@ -50,7 +50,7 @@ def parse_dump(filename, output, end_mark):
         f.close()
 
 def parse_json(filename):
-    print 'parse_json'
+    #print 'parse_json'
     try:
         if is_python3:
             encoder = AstEncoder()
@@ -65,7 +65,7 @@ def parse_json(filename):
 
 
 def parse_file(filename):
-    print 'parse file'
+#    print 'parse file'
     global enc, lines
     enc, enc_len = detect_encoding(filename)
     f = codecs.open(filename, 'r', enc)
@@ -85,11 +85,11 @@ def parse_file(filename):
 
 
 def parse_string(string, filename=None):
-    print 'parse string'
+#    print 'parse string'
     tree = ast.parse(string)
-    print 'before improve'
+#    print 'before improve'
     improve_ast(tree, string)
-    print 'after improve'
+#    print 'after improve'
     if filename:
         tree.filename = filename
     return tree
