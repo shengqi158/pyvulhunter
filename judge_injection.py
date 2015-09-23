@@ -34,7 +34,7 @@ is_arg_return_op = False
 UNSAFE_FUNCS = ["os.system", "os.popen", "os.spawnl",'os.spawnle','os.spawnlp','os.spawnlpe',\
         'os.spawnv','os.spawnve','os.spawnvp','os.spawnvpe','os.execv','os.execve','os.execvp',\
         'os.execvpe','os.open', 'os.popen2','os.popen3', 'os.popen4','os.putenv', 'os.rename',\
-        'os.renames','call','Popen','Popen2','getoutput','getstatusoutput','eval']
+        'os.renames','call','Popen','Popen2','getoutput','getstatusoutput','eval','open','file']
 FILE_UNSAFE_FUNCS = set()
 FILE_SQL_UNSAFE_FUNCS = set()
 UNTREATED_FUNS = set(['open','readline','read','readlines','next','query2dict'])
@@ -58,7 +58,7 @@ class judge_injection(object):
         except Exception,e:
             self.tree = "{}"
             print e
-        print 'self.tree',self.tree
+#        print 'self.tree',self.tree
         self.tree = json.loads(self.tree)
         rec_decrease_tree(self.tree)
         if DEBUG:
