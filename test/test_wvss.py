@@ -1,11 +1,9 @@
 #!env python
 #coding=utf-8
 # 
-# Author:       liaoxinxi
 # 
 # Created Time: Mon 16 Mar 2015 04:35:17 PM GMT-8
 # 
-# FileName:     test_wvss.py
 # 
 # Description:  
 # 
