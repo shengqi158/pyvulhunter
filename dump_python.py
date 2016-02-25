@@ -649,7 +649,6 @@ def is_alpha(c):
 # p('/Users/yinwang/Code/cpython/Lib/lib2to3/tests/data/false_encoding.py')
 # p('/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/test/test_marshal.py')
 # p('/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/lib-tk/Tix.py')
-#p('/home/liaoxinxi/trunk/src/bvs/login/test_system.py')
-#p('/home/liaoxinxi/trunk/src/www/npai/systemforpa.py')
+
 #p('libssh2_login_test.py.bak')
 #p('arg.py')
