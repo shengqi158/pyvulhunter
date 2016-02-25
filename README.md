@@ -21,7 +21,7 @@ https://greentreesnakes.readthedocs.org/en/latest/nodes.html 在这里包含了�
 
 # 3,使用方法  
   使用方法如下：
-  liaoxinxi$ python judge_injection.py -h
+$ python judge_injection.py -h
   Usage: judge_injection.py [options]
 
   Options:
