@@ -1037,13 +1037,11 @@ def judge_all(filename, check_type):
 if __name__ == "__main__":
 #    filename = "libssh2_login_test.py"
 #    filename = "libssh2_login_test.py.bak"
-#    filename = "/home/liaoxinxi/trunk/src/www/npai/systemforpa.py"
-#    filename = "/home/liaoxinxi/trunk/src/www/npai/getTplVulLibforpa.py"
+
 #    filename = "arg.py"
 #    filename = "test3.py"
     #rec_decrease_tree(line)
-    file_path = "/home/liaoxinxi/trunk/src/www/npai"
-    file_path = "/home/liaoxinxi/trunk/src/www/"
+
 #    files = walk_dir(file_path)
     files = ["libssh2_login_test.py.bak"]
 #    files = ["testsql.py"]
