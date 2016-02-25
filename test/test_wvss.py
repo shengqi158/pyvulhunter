@@ -10,7 +10,7 @@
 # ChangeLog:
 def get_ws_plgs( parent_id = 0, type_id = 0 ):
     '''
-    get count webscan plugin categories
+
     '''
     #本身有问题
     if not isInteger( parent_id ) or not isInteger( type_id ):
@@ -18,7 +18,7 @@ def get_ws_plgs( parent_id = 0, type_id = 0 ):
 
     from django.db import connection
     cursor = connection.cursor()
-    cursor.execute("SELECT * from plugin where plugin_id=1000000 and categories[" + str(parent_id) + "]=" + str(type_id))
+    cursor.execute("SELECT * from xx where x_id=1000000 and categories[" + str(parent_id) + "]=" + str(type_id))
     # row = cursor.fetchone()
     rows = cursor.fetchall()
     cursor.close()
