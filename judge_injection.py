@@ -1,7 +1,6 @@
 #!env python
 #coding=utf-8
 # 
-# Author:       liaoxinxi
 # 
 # Created Time: Fri 21 Nov 2014 10:49:03 AM GMT-8
 # 
